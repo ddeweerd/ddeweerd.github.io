@@ -12,7 +12,7 @@
 
 <meta name="author" content="Dirk de Weerd" />
 
-<meta name="date" content="2018-11-27" />
+<meta name="date" content="2019-04-02" />
 
 <title>MODifieRDev</title>
 
@@ -72,7 +72,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <div class="inner">
 <h1 class="title toc-ignore">MODifieRDev</h1>
 <h3 class="author">Dirk de Weerd</h3>
-<h3 class="date">2018-11-27</h3>
+<h3 class="date">2019-04-02</h3>
 </div>
 </header>
 
@@ -114,7 +114,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
     <section id="main-content">
 <div id="installation" class="section level1">
 <h1>Installation</h1>
-<p>MODifierDev requires Python 3 with additional Python libraries scipy, numpy and networkx. They are a standard part of Anaconda so installing Anaconda is recommended. It can be downloaded here:</p>
+<p>MODifierDev requires Python 3 with additional Python libraries scipy, sqlite3, numpy and networkx. They are a standard part of Anaconda so installing Anaconda is recommended. It can be downloaded here:</p>
 <p><a href="https://www.anaconda.com/">Anaconda</a></p>
 <p>In addition, some R packages are required. They can be acquired with the following code:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="cf">if</span> (<span class="op">!</span><span class="kw">requireNamespace</span>(<span class="st">&quot;BiocManager&quot;</span>, <span class="dt">quietly =</span> <span class="ot">TRUE</span>))
@@ -136,7 +136,9 @@ BiocManager<span class="op">::</span><span class="kw">install</span>(<span class
                    <span class="st">&quot;plyr&quot;</span>, 
                    <span class="st">&quot;parallel&quot;</span>, 
                    <span class="st">&quot;igraph&quot;</span>, 
-                   <span class="st">&quot;WGCNA&quot;</span>))</code></pre></div>
+                   <span class="st">&quot;WGCNA&quot;</span>,
+                   <span class="st">&quot;RSQLite&quot;</span>
+                   <span class="st">&quot;stackoverflow&quot;</span>))</code></pre></div>
 <p>After that, the package can be installed from github:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">devtools<span class="op">::</span><span class="kw">install_git</span>(<span class="dt">url =</span> <span class="st">&quot;https://github.com/ddeweerd/MODifieRDev.git&quot;</span>)</code></pre></div>
 </div>
@@ -375,17 +377,37 @@ $Patient
 <p>In addition, some inference methods allow to modify the module object after analysis. If an inference method has these functions, they will be shortly discussed in separate subsections of the inference method.</p>
 <div id="clique-sum" class="section level3">
 <h3>Clique Sum</h3>
-<p>Clique Sum in implementation of the clique-based disease module inference method proposed by Barrenäs et al. <span class="citation">(Barrenäs et al. <a href="#ref-Barrenas2012">2012</a>)</span> In MODifieR, the function can be called using <code>clique_sum()</code></p>
-<p>In the example the number of iterations is reduced to 1000 (from 10000) to speed up the tutorial</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">clique_sum_module &lt;-<span class="st"> </span><span class="kw">clique_sum</span>(<span class="dt">MODifieR_input =</span> MODifieR_input, 
-                                <span class="dt">ppi_network =</span> ppi_network, 
-                                <span class="dt">n_iterations =</span> <span class="dv">1000</span>)</code></pre></div>
+<p>There are two different versions of the Clique Sum algorithm implemented, <code>clique_sum_exact</code> and <code>clique_sum_permutation</code>, that differ in the method to determine if a clique is significantly enriched with DEGs. Obtaining cliques is done in a separate function, <code>build_clique_db</code>, that creates an SQLite database for the cliques. This is because obtaining cliques is a computationally intersive process, may clog the memory when using a large network and is static for each network.</p>
+<p>Both versions take in the filename of this database instead of a PPi network.</p>
+<div id="build_clique_db" class="section level4">
+<h4>build_clique_db</h4>
+<p>This function is used to create a clique database. <code>db_folder</code> is the folder where database will be stored and <code>db_name</code> is the name of the database. .sqlite will be appended to the database name.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">build_clique_db</span>(<span class="dt">ppi_network =</span> ppi_network, 
+                <span class="dt">db_folder =</span> <span class="st">&quot;/folder/name&quot;</span>, 
+                <span class="dt">db_name =</span> <span class="st">&quot;example&quot;</span>)</code></pre></div>
+</div>
+<div id="clique_sum_exact" class="section level4">
+<h4>clique_sum_exact</h4>
+<p>clique_sum_permutation is an implementation of the clique-based disease module inference method proposed by Barrenäs et al. <span class="citation">(Barrenäs et al. <a href="#ref-Barrenas2012">2012</a>)</span></p>
+<p>Enrichment of cliques is determined by a one-sided Fisher exact test.</p>
+<p>In MODifieR, the function can be called using <code>clique_sum_exact()</code> and using the filename of the database created in the function <code>build_clique_db</code> as input for the db parameter.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">clique_sum_exact_module &lt;-<span class="st"> </span><span class="kw">clique_sum_exact</span>(<span class="dt">MODifieR_input =</span> MODifieR_input, 
+                                <span class="dt">db =</span> <span class="st">&quot;folder/name/example.sqlite&quot;</span>)</code></pre></div>
+</div>
+<div id="clique_sum_permutation" class="section level4">
+<h4>clique_sum_permutation</h4>
+<p>clique_sum_permutation is a variation of the clique-based disease module inference method proposed by Barrenäs et al. <span class="citation">(Barrenäs et al. <a href="#ref-Barrenas2012">2012</a>)</span>, <span class="citation">(Gustafsson et al. <a href="#ref-Gustafsson2014">2014</a>)</span></p>
+<p>Enrichment of cliques is determined by comparing the sum of the -log 10 p-values for all genes in the clique and comparing that to a null distribution of cliques composed of random genes of the same size.</p>
+<p>In MODifieR, the function can be called using <code>clique_sum_permutation()</code> and using the filename of the database created in the function <code>build_clique_db</code> as input for the db parameter.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">clique_sum_permutation_module &lt;-<span class="st"> </span><span class="kw">clique_sum_permutation</span>(<span class="dt">MODifieR_input =</span> MODifieR_input, 
+                                <span class="dt">db =</span> <span class="st">&quot;db_name = &quot;</span>example<span class="st">&quot;&quot;</span>)</code></pre></div>
+</div>
 </div>
 <div id="correlation-clique" class="section level3">
 <h3>Correlation Clique</h3>
 <p>The correlation clique is a clique-based algorithm using consensus clustering. The algorithm starts with calculating a correlation score between each interaction in the PPi network. The correlation score is obtained by subtracting the Pearson correlation p-value: <span class="math inline">\(correlation score = 1 - Pearson\: p\: value\)</span></p>
-<p>Subsequently, the correlation score is multiplied by the correlation confidence and scaled with the scale factor to get the edge score: <span class="math inline">\(edge score = \sqrt{(correlation score * confidence score )} * scale\:factor\)</span></p>
-<p>When the edge scores are calculated the iterative part of the algorithm commences: All edge scores are compared to random variables from the uniform distribution between (0,1) only interactions where the edge score is higher than the random variable are used to construct a new PPi network. Then, maximal cliques are inferred from this new network. The cliques are tested for significant enrichment of DEGs by Fisher’s exact test and the union of significant cliques is the disease module for this iteration. The final disease module will consist of genes that have been present in at least <code>frequency cutoff</code> iterations</p>
+<p>Subsequently, the correlation score is multiplied by the correlation confidence. $edge score =  $</p>
+<p>When the edge scores are calculated the iterative part of the algorithm commences: All edge scores are scaled to so that the mean of all edge scores is equal to the <code>fraction_of_iteration</code> parameter. Next, the newly scaled scores are compared to random variables from the uniform distribution between (0,1) and only interactions where the edge score is higher than the random variable are used to construct a new PPi network. Because the scores are scaled to <code>fraction_of_iteration</code>, this is the average fraction of interactions used for this new network. Then, maximal cliques are inferred from this new network. The cliques are tested for significant enrichment of DEGs by Fisher’s exact test and the union of significant cliques is the disease module for this iteration. The final disease module will consist of genes that have been present in at least <code>frequency cutoff</code> iterations</p>
 <p>The function can be called using <code>correlation_clique()</code></p>
 <p>In the example code, the number of iterations has been reduced to 10 (from 50) to speed up the analysis</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">correlation_clique_module &lt;-<span class="st"> </span><span class="kw">correlation_clique</span>(<span class="dt">MODifieR_input =</span> MODifieR_input, 
@@ -628,6 +650,9 @@ diamond_module &lt;-<span class="st"> </span><span class="kw">diamond_remove_see
 </div>
 <div id="ref-Ghiassian2015">
 <p>Ghiassian, Susan Dina, Jörg Menche, and Albert László Barabási. 2015. “A DIseAse MOdule Detection (DIAMOnD) Algorithm Derived from a Systematic Analysis of Connectivity Patterns of Disease Proteins in the Human Interactome.” <em>PLoS Computational Biology</em> 11 (4): 1–21. doi:<a href="https://doi.org/10.1371/journal.pcbi.1004120">10.1371/journal.pcbi.1004120</a>.</p>
+</div>
+<div id="ref-Gustafsson2014">
+<p>Gustafsson, Mika, Måns Edström, Danuta Gawel, Colm E Nestor, Hui Wang, Huan Zhang, Fredrik Barrenäs, et al. 2014. “Integrated genomic and prospective clinical studies show the importance of modular pleiotropy for disease susceptibility, diagnosis and treatment.” <em>Genome Medicine</em> 6 (2): 17. doi:<a href="https://doi.org/10.1186/gm534">10.1186/gm534</a>.</p>
 </div>
 <div id="ref-Jensen2007">
 <p>Jensen, Lars J, Michael Kuhn, Samuel Chaffron, Berend Snel, Peer Bork, Tobias Doerks, and Beate Kru. 2007. “STRING 7—recent developments in the integration and prediction of protein interactions” 35 (November 2006): 358–62. doi:<a href="https://doi.org/10.1093/nar/gkl825">10.1093/nar/gkl825</a>.</p>
