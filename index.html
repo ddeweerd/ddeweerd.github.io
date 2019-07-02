@@ -12,7 +12,7 @@
 
 <meta name="author" content="Dirk de Weerd" />
 
-<meta name="date" content="2019-05-17" />
+<meta name="date" content="2019-07-02" />
 
 <title>MODifieRDev</title>
 
@@ -72,7 +72,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <div class="inner">
 <h1 class="title toc-ignore">MODifieRDev</h1>
 <h3 class="author">Dirk de Weerd</h3>
-<h3 class="date">2019-05-17</h3>
+<h3 class="date">2019-07-02</h3>
 </div>
 </header>
 
@@ -103,7 +103,10 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li><a href="#module-discoverer">Module Discoverer</a></li>
 <li><a href="#wgcna-trait-based">WGCNA trait-based</a></li>
 </ul></li>
-<li><a href="#consensus-modules">Consensus modules</a></li>
+<li><a href="#consensus-modules">Consensus modules</a><ul>
+<li><a href="#count-based">Count based</a></li>
+<li><a href="#specific-betweenness-s2b">Specific betweenness (S2B)</a></li>
+</ul></li>
 <li><a href="#general-functions">General functions</a><ul>
 <li><a href="#plotting">Plotting</a></li>
 </ul></li>
@@ -611,8 +614,11 @@ diamond_module &lt;-<span class="st"> </span><span class="kw">diamond_remove_see
 </div>
 <div id="consensus-modules" class="section level2">
 <h2>Consensus modules</h2>
-<p>A consensus module can be derived with the function <code>create_module_set()</code>. It will return a module object of class <code>MODifieR_module</code>, same as the individual methods. The subclass is <code>Module_set</code>.</p>
-<p>The method currently implemented to derive a consensus module from a set of modules is by tabulating the presence of each gene in the individual methods. The next step is to set a minimum for this presence; for example, a gene has to be present in at least 3 of the individual modules.</p>
+<p>Currently, there are two different methods implemented to derive a consensus module. The first is a count-based consensus between a list of modules and the second is specific betweenness (S2B) <span class="citation">(Garcia-Vaquero et al. <a href="#ref-Garcia-Vaquero2018">2018</a>)</span></p>
+<div id="count-based" class="section level3">
+<h3>Count based</h3>
+<p>A count based consensus module can be derived with the function <code>create_module_set()</code>. It will return a module object of class <code>MODifieR_module</code>, same as the individual methods. The subclass is <code>Module_set</code>.</p>
+<p>The method derives a consensus module from a set of modules is by tabulating the presence of each gene in the individual methods. The next step is to set a minimum for this presence; for example, a gene has to be present in at least 3 of the individual modules.</p>
 <p>To start deriving a consensus module, it is convenient to wrap all the previously acquired modules into a list:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">module_list &lt;-<span class="st"> </span><span class="kw">list</span>(clique_sum_permutation_module, 
                     correlation_clique_module, 
@@ -629,7 +635,7 @@ diamond_module &lt;-<span class="st"> </span><span class="kw">diamond_remove_see
                             <span class="dt">module_list =</span> module_list)</code></pre></div>
 <p>A list of length 5 with <code>Module_set</code> objects is returned. In this tutorial the fourth element in the list, so the consensus module where genes are present in at least 4 individual methods will be inspected.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">consensus_module4 &lt;-<span class="st"> </span>consensus_modules[[<span class="dv">4</span>]]</code></pre></div>
-<p>Like other module objects, it has vector containing the module genes and a list containing the settings. In addition, it has the following elements:</p>
+<p>Like other module objects, it has a vector containing the module genes and a list containing the settings. In addition, it has the following elements:</p>
 <ul>
 <li><p><code>module_gene_list</code> A named list containing the module genes from the original modules</p></li>
 <li><p><code>gene_frequency</code>Table containing all the genes present in the modules and their frequency</p></li>
@@ -722,6 +728,22 @@ diamond_module &lt;-<span class="st"> </span><span class="kw">diamond_remove_see
 </table>
 <p>Table 2: Excerpt from Molecular Function GO term table on the result page of <a href="https://string-db.org">String</a></p>
 </div>
+<div id="specific-betweenness-s2b" class="section level3">
+<h3>Specific betweenness (S2B)</h3>
+<p>An S2B consensus module can be derived with the function <code>S2B()</code>. It will return a module object of class <code>MODifieR_module</code>, same as the individual methods. The subclass is <code>S2B</code>.</p>
+<p>The method derives a consensus module between two modules. Originally conceived by <span class="citation">(Garcia-Vaquero et al. <a href="#ref-Garcia-Vaquero2018">2018</a>)</span> to find an overlap between two gene sets from related diseases, it can also be applied to find an overlap between gene sets tht have been inferred with different methods but are from the same disease.</p>
+<p>The method works by prioritizing genes frequently and specifically present in shortest paths linking two disease modules. For a detailed description of the algorithm, see <span class="citation">(Garcia-Vaquero et al. <a href="#ref-Garcia-Vaquero2018">2018</a>)</span>.</p>
+<p>The function is called using <code>S2B()</code></p>
+<p>In the example below, the clique_sum_permutation and MODA modules are used, and the number of iterations (<code>nrep</code> and <code>nrep2</code>) is set to 50 instead of 100 to shorten computation time.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"> S2B_module &lt;-<span class="st"> </span><span class="kw">S2B</span>(<span class="dt">MODifieR_module1 =</span> clique_sum_permutation_module, 
+                   <span class="dt">MODifieR_module2 =</span> moda_module, 
+                   <span class="dt">ppi_network =</span> ppi_network, 
+                   <span class="dt">nrep =</span> <span class="dv">50</span>, 
+                   <span class="dt">nrep2 =</span> <span class="dv">50</span>)</code></pre></div>
+<p>As with all module objects, the S2B object has a vector called <code>module_genes</code> for the genes that make up the module and also a list containing the settings that have been used to generate the object.</p>
+<p>In addition it has two related fields, <code>input_class1</code> and <code>input_class2</code>, that show the class of the <code>MODifieR_input</code> objects that have been used as input. In the case of the tutorial they are <code>Clique_Sum_permutation</code> and <code>MODA</code></p>
+</div>
+</div>
 <div id="general-functions" class="section level2">
 <h2>General functions</h2>
 <div id="plotting" class="section level3">
@@ -748,6 +770,9 @@ diamond_module &lt;-<span class="st"> </span><span class="kw">diamond_remove_see
 </div>
 <div id="ref-Barrenas2012">
 <p>Barrenäs, Fredrik, Sreenivas Chavali, Alexessander Alves, Lachlan Coin, Marjo-Riitta Jarvelin, Rebecka Jörnsten, Michael a Langston, et al. 2012. “Highly interconnected genes in disease-specific networks are enriched for disease-associated polymorphisms.” <em>Genome Biology</em> 13 (6): R46. doi:<a href="https://doi.org/10.1186/gb-2012-13-6-r46">10.1186/gb-2012-13-6-r46</a>.</p>
+</div>
+<div id="ref-Garcia-Vaquero2018">
+<p>Garcia-Vaquero, Marina L., Margarida Gama-Carvalho, Javier De Las Rivas, and Francisco R. Pinto. 2018. “Searching the overlap between network modules with specific betweeness (S2B) and its application to cross-disease analysis.” <em>Scientific Reports</em> 8 (1). Springer US: 1–10. doi:<a href="https://doi.org/10.1038/s41598-018-29990-7">10.1038/s41598-018-29990-7</a>.</p>
 </div>
 <div id="ref-Ghiassian2015">
 <p>Ghiassian, Susan Dina, Jörg Menche, and Albert László Barabási. 2015. “A DIseAse MOdule Detection (DIAMOnD) Algorithm Derived from a Systematic Analysis of Connectivity Patterns of Disease Proteins in the Human Interactome.” <em>PLoS Computational Biology</em> 11 (4): 1–21. doi:<a href="https://doi.org/10.1371/journal.pcbi.1004120">10.1371/journal.pcbi.1004120</a>.</p>
